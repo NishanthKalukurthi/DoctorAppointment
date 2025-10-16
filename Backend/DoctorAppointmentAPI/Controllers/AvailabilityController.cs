@@ -68,6 +68,20 @@ namespace DoctorAppointmentAPI.Controllers
                 var slots = new List<AvailableSlotResponse>();
                 var currentDate = startDate.Date;
 
+                // Debug: Log existing appointments for this doctor
+                var existingAppointments = await _context.Appointments
+                    .Where(a => a.DoctorId == doctorId && a.Status != AppointmentStatus.Cancelled)
+                    .ToListAsync();
+                _logger.LogInformation($"Found {existingAppointments.Count} existing appointments for doctor {doctorId}");
+                foreach (var apt in existingAppointments)
+                {
+                    var willBlockSlot = apt.Status == AppointmentStatus.Confirmed || 
+                                       apt.Status == AppointmentStatus.InProgress || 
+                                       apt.Status == AppointmentStatus.Completed ||
+                                       apt.Status == AppointmentStatus.NoShow;
+                    _logger.LogInformation($"Appointment: {apt.AppointmentDate:yyyy-MM-dd} {apt.StartTime}-{apt.EndTime}, Status: {apt.Status}, WillBlockSlot: {willBlockSlot}");
+                }
+
                 while (currentDate <= endDate.Date)
                 {
                     var dayOfWeek = currentDate.DayOfWeek;
@@ -81,13 +95,35 @@ namespace DoctorAppointmentAPI.Controllers
                         var slotEnd = currentDate.Add(availability.EndTime);
 
                         // Check if there's a conflicting appointment
+                        // Only disable slots for appointments that are Confirmed, InProgress, or Completed
+                        // Allow booking over Scheduled appointments (they can be rescheduled)
                         var hasConflict = await _context.Appointments
                             .AnyAsync(a => a.DoctorId == doctorId &&
                                          a.AppointmentDate.Date == currentDate &&
-                                         a.Status != AppointmentStatus.Cancelled &&
-                                         ((slotStart >= a.AppointmentDate.Add(a.StartTime) && slotStart < a.AppointmentDate.Add(a.EndTime)) ||
-                                          (slotEnd > a.AppointmentDate.Add(a.StartTime) && slotEnd <= a.AppointmentDate.Add(a.EndTime)) ||
-                                          (slotStart <= a.AppointmentDate.Add(a.StartTime) && slotEnd >= a.AppointmentDate.Add(a.EndTime))));
+                                         (a.Status == AppointmentStatus.Confirmed || 
+                                          a.Status == AppointmentStatus.InProgress || 
+                                          a.Status == AppointmentStatus.Completed ||
+                                          a.Status == AppointmentStatus.NoShow) &&
+                                         a.StartTime == availability.StartTime &&
+                                         a.EndTime == availability.EndTime);
+
+                        // Debug: Log the specific appointments being checked for this slot
+                        var conflictingAppointments = await _context.Appointments
+                            .Where(a => a.DoctorId == doctorId &&
+                                       a.AppointmentDate.Date == currentDate &&
+                                       (a.Status == AppointmentStatus.Confirmed || 
+                                        a.Status == AppointmentStatus.InProgress || 
+                                        a.Status == AppointmentStatus.Completed ||
+                                        a.Status == AppointmentStatus.NoShow) &&
+                                       a.StartTime == availability.StartTime &&
+                                       a.EndTime == availability.EndTime)
+                            .ToListAsync();
+                        
+                        _logger.LogInformation($"Slot {availability.StartTime}-{availability.EndTime} on {currentDate:yyyy-MM-dd}: hasConflict={hasConflict}, conflictingAppointments={conflictingAppointments.Count}");
+                        foreach (var apt in conflictingAppointments)
+                        {
+                            _logger.LogInformation($"  Conflicting appointment: {apt.StartTime}-{apt.EndTime}, Status: {apt.Status}");
+                        }
 
                         slots.Add(new AvailableSlotResponse
                         {

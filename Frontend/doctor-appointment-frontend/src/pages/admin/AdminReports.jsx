@@ -16,37 +16,22 @@ import { adminService } from '../../services/adminService'
 export const AdminReports = () => {
   const [reports, setReports] = useState({
     overview: {
-      totalRevenue: 67500,
-      totalAppointments: 145,
-      completedAppointments: 120,
-      cancelledAppointments: 15,
-      noShowAppointments: 10,
-      averageAppointmentValue: 465,
-      patientSatisfaction: 4.8
+      totalRevenue: 0,
+      totalAppointments: 0,
+      completedAppointments: 0,
+      cancelledAppointments: 0,
+      noShowAppointments: 0,
+      averageAppointmentValue: 0,
+      patientSatisfaction: 0
     },
-    monthlyStats: [
-      { month: 'Jan', appointments: 45, revenue: 22500 },
-      { month: 'Feb', appointments: 52, revenue: 26000 },
-      { month: 'Mar', appointments: 48, revenue: 19000 }
-    ],
-    topDoctors: [
-      { name: 'Dr. Priya Patel', specialization: 'Dermatology', appointments: 25, revenue: 30000 },
-      { name: 'Dr. Vikram Singh', specialization: 'Orthopedics', appointments: 22, revenue: 44000 },
-      { name: 'Dr. Rajesh Sharma', specialization: 'Cardiology', appointments: 20, revenue: 30000 }
-    ],
-    popularSpecializations: [
-      { name: 'Dermatology', count: 35, percentage: 24 },
-      { name: 'Orthopedics', count: 28, percentage: 19 },
-      { name: 'Cardiology', count: 25, percentage: 17 },
-      { name: 'Pediatrics', count: 22, percentage: 15 },
-      { name: 'Neurology', count: 20, percentage: 14 },
-      { name: 'Others', count: 15, percentage: 11 }
-    ]
+    monthlyStats: [],
+    topDoctors: [],
+    popularSpecializations: []
   })
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState({
-    startDate: '2024-01-01',
-    endDate: '2024-03-31'
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
   })
   const [statusFilter, setStatusFilter] = useState('All')
   const [specializationFilter, setSpecializationFilter] = useState('All')
@@ -65,7 +50,7 @@ export const AdminReports = () => {
       ])
       
       // Apply client-side filters
-      let filteredAppointments = appointmentsData
+      let filteredAppointments = appointmentsData || []
       
       // Apply status filter
       if (statusFilter !== 'All') {
@@ -110,7 +95,7 @@ export const AdminReports = () => {
       }
       
       // Calculate top doctors using filtered data
-      const doctorStats = doctorsData.map(doctor => {
+      const doctorStats = (doctorsData || []).map(doctor => {
         const doctorAppointments = filteredAppointments.filter(apt => apt.doctorId === doctor.id)
         const completedDoctorAppointments = doctorAppointments.filter(apt => apt.status === 'Completed')
         const doctorRevenue = completedDoctorAppointments.reduce((sum, apt) => sum + (apt.fee || 0), 0)
@@ -134,7 +119,7 @@ export const AdminReports = () => {
         .map(([name, count]) => ({
           name,
           count,
-          percentage: Math.round((count / totalAppointments) * 100)
+          percentage: totalAppointments > 0 ? Math.round((count / totalAppointments) * 100) : 0
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 6)
@@ -156,6 +141,22 @@ export const AdminReports = () => {
     } catch (error) {
       console.error('Failed to fetch reports:', error)
       toast.error('Failed to fetch reports data')
+      
+      // Set empty data on error
+      setReports({
+        overview: {
+          totalRevenue: 0,
+          totalAppointments: 0,
+          completedAppointments: 0,
+          cancelledAppointments: 0,
+          noShowAppointments: 0,
+          averageAppointmentValue: 0,
+          patientSatisfaction: 0
+        },
+        monthlyStats: [],
+        topDoctors: [],
+        popularSpecializations: []
+      })
     } finally {
       setLoading(false)
     }

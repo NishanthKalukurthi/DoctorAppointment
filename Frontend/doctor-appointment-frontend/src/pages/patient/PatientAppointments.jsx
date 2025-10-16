@@ -39,25 +39,52 @@ export const PatientAppointments = () => {
   }
 
   const getStatusColor = (status) => {
+    // Handle both string and numeric status values
     switch (status) {
-      case 'Scheduled': return 'text-blue-600 bg-blue-100'
-      case 'Confirmed': return 'text-green-600 bg-green-100'
-      case 'InProgress': return 'text-yellow-600 bg-yellow-100'
-      case 'Completed': return 'text-gray-600 bg-gray-100'
-      case 'Cancelled': return 'text-red-600 bg-red-100'
-      case 'NoShow': return 'text-orange-600 bg-orange-100'
+      case 'Scheduled':
+      case 0: return 'text-blue-600 bg-blue-100'
+      case 'Confirmed':
+      case 1: return 'text-green-600 bg-green-100'
+      case 'InProgress':
+      case 2: return 'text-yellow-600 bg-yellow-100'
+      case 'Completed':
+      case 3: return 'text-gray-600 bg-gray-100'
+      case 'Cancelled':
+      case 4: return 'text-red-600 bg-red-100'
+      case 'NoShow':
+      case 5: return 'text-orange-600 bg-orange-100'
       default: return 'text-gray-600 bg-gray-100'
     }
   }
 
-  const getStatusIcon = (status) => {
+  const getStatusText = (status) => {
+    // Convert numeric status to string for display
     switch (status) {
-      case 'Scheduled': return <Clock className="w-4 h-4" />
-      case 'Confirmed': return <CheckCircle className="w-4 h-4" />
-      case 'InProgress': return <AlertCircle className="w-4 h-4" />
-      case 'Completed': return <CheckCircle className="w-4 h-4" />
-      case 'Cancelled': return <XCircle className="w-4 h-4" />
-      case 'NoShow': return <XCircle className="w-4 h-4" />
+      case 0: return 'Scheduled'
+      case 1: return 'Confirmed'
+      case 2: return 'InProgress'
+      case 3: return 'Completed'
+      case 4: return 'Cancelled'
+      case 5: return 'NoShow'
+      default: return status // Return as-is if it's already a string
+    }
+  }
+
+  const getStatusIcon = (status) => {
+    // Handle both string and numeric status values
+    switch (status) {
+      case 'Scheduled':
+      case 0: return <Clock className="w-4 h-4" />
+      case 'Confirmed':
+      case 1: return <CheckCircle className="w-4 h-4" />
+      case 'InProgress':
+      case 2: return <AlertCircle className="w-4 h-4" />
+      case 'Completed':
+      case 3: return <CheckCircle className="w-4 h-4" />
+      case 'Cancelled':
+      case 4: return <XCircle className="w-4 h-4" />
+      case 'NoShow':
+      case 5: return <XCircle className="w-4 h-4" />
       default: return <Clock className="w-4 h-4" />
     }
   }
@@ -85,7 +112,10 @@ export const PatientAppointments = () => {
     const now = new Date()
     const hoursUntilAppointment = (appointmentDate - now) / (1000 * 60 * 60)
     
-    return appointment.status === 'Scheduled' && hoursUntilAppointment > 24
+    // Check if status is 'Scheduled' (either string or numeric value 0)
+    const isScheduled = appointment.status === 'Scheduled' || appointment.status === 0
+    
+    return isScheduled && hoursUntilAppointment > 24
   }
 
   if (loading) {
@@ -135,7 +165,7 @@ export const PatientAppointments = () => {
                   <div className="flex items-center space-x-2">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
                       {getStatusIcon(appointment.status)}
-                      <span className="ml-1">{appointment.status}</span>
+                      <span className="ml-1">{getStatusText(appointment.status)}</span>
                     </span>
                   </div>
                 </div>
@@ -184,7 +214,7 @@ export const PatientAppointments = () => {
                       Cancel Appointment
                     </button>
                   )}
-                  {!canCancelAppointment(appointment) && appointment.status === 'Scheduled' && (
+                  {!canCancelAppointment(appointment) && (appointment.status === 'Scheduled' || appointment.status === 0) && (
                     <span className="text-sm text-gray-500 flex items-center">
                       <AlertCircle className="w-4 h-4 mr-1" />
                       Cannot cancel within 24 hours

@@ -57,13 +57,17 @@ namespace DoctorAppointmentAPI.Controllers
                 }
 
                 // Check for conflicts
+                // Only prevent booking if there's a Confirmed, InProgress, Completed, or NoShow appointment
+                // Allow booking over Scheduled appointments (they can be rescheduled)
                 var conflictingAppointment = await _context.Appointments
                     .Where(a => a.DoctorId == request.DoctorId &&
                                a.AppointmentDate.Date == request.AppointmentDate.Date &&
-                               a.Status != AppointmentStatus.Cancelled &&
-                               ((request.StartTime >= a.StartTime && request.StartTime < a.EndTime) ||
-                                (request.EndTime > a.StartTime && request.EndTime <= a.EndTime) ||
-                                (request.StartTime <= a.StartTime && request.EndTime >= a.EndTime)))
+                               (a.Status == AppointmentStatus.Confirmed || 
+                                a.Status == AppointmentStatus.InProgress || 
+                                a.Status == AppointmentStatus.Completed ||
+                                a.Status == AppointmentStatus.NoShow) &&
+                               a.StartTime == request.StartTime &&
+                               a.EndTime == request.EndTime)
                     .FirstOrDefaultAsync();
 
                 if (conflictingAppointment != null)

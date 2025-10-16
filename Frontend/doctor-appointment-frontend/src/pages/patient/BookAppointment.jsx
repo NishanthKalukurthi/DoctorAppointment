@@ -61,19 +61,38 @@ export const BookAppointment = () => {
       
       console.log('Received slots:', slots)
       
+      // Debug: Log each slot's availability status
+      if (slots && slots.length > 0) {
+        console.log('Slot availability details:')
+        slots.forEach((slot, index) => {
+          console.log(`Slot ${index}:`, {
+            time: `${slot.startTime} - ${slot.endTime}`,
+            isAvailable: slot.isAvailable,
+            date: slot.date
+          })
+        })
+      }
+      
       // If no slots returned, generate some default slots for testing
       if (!slots || slots.length === 0) {
         console.log('No slots returned, generating default slots for testing')
         const defaultSlots = generateDefaultSlots(date)
         setAvailableSlots(defaultSlots)
       } else {
-        setAvailableSlots(slots.filter(slot => slot.isAvailable))
+        // Show all slots (both available and unavailable) so users can see what's booked
+        setAvailableSlots(slots)
       }
     } catch (error) {
       console.error('Error fetching slots:', error)
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      })
       console.log('API failed, generating default slots for testing')
       // Generate default slots as fallback
       const defaultSlots = generateDefaultSlots(date)
+      console.log('Generated default slots:', defaultSlots)
       setAvailableSlots(defaultSlots)
       toast.error('Using default time slots. Please contact the doctor for actual availability.')
     } finally {
@@ -88,6 +107,20 @@ export const BookAppointment = () => {
   }
 
   const handleSlotSelect = (slot) => {
+    console.log('Slot clicked:', {
+      time: `${slot.startTime} - ${slot.endTime}`,
+      isAvailable: slot.isAvailable,
+      date: slot.date
+    })
+    
+    // Only allow selection of available slots
+    if (!slot.isAvailable) {
+      console.log('Blocking selection of unavailable slot')
+      toast.error('This time slot is unavailable')
+      return
+    }
+    
+    console.log('Allowing selection of available slot')
     setSelectedSlot(slot)
     setValue('appointmentDate', slot.date)
     setValue('startTime', slot.startTime)
@@ -151,14 +184,18 @@ export const BookAppointment = () => {
       const startTime = `${hour.toString().padStart(2, '0')}:00:00`
       const endTime = `${(hour + 1).toString().padStart(2, '0')}:00:00`
       
+      // Make some slots unavailable for testing (simulating confirmed/in-progress appointments)
+      const isAvailable = hour !== 10 && hour !== 14 // Make 10-11 AM and 2-3 PM unavailable (simulating confirmed appointments)
+      
       slots.push({
         date: baseDate.toISOString().split('T')[0],
         startTime: startTime,
         endTime: endTime,
-        isAvailable: true
+        isAvailable: isAvailable
       })
     }
     
+    console.log('Generated test slots with mixed availability:', slots)
     return slots
   }
 
@@ -274,14 +311,26 @@ export const BookAppointment = () => {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                         </div>
                       ) : availableSlots.length > 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {availableSlots.map((slot, index) => (
+                        <div>
+                          {availableSlots.some(slot => slot.isAvailable) ? null : (
+                            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-yellow-800 text-sm">
+                                <AlertCircle className="w-4 h-4 inline mr-1" />
+                                All time slots for this date are currently unavailable. Please select a different date.
+                              </p>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {availableSlots.map((slot, index) => (
                             <button
                               key={index}
                               type="button"
                               onClick={() => handleSlotSelect(slot)}
+                              disabled={!slot.isAvailable}
                               className={`p-3 rounded-lg border text-center transition-colors ${
-                                selectedSlot === slot
+                                !slot.isAvailable
+                                  ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed opacity-60'
+                                  : selectedSlot === slot
                                   ? 'border-primary-500 bg-primary-50 text-primary-700'
                                   : 'border-gray-300 hover:border-primary-300 hover:bg-gray-50'
                               }`}
@@ -292,13 +341,19 @@ export const BookAppointment = () => {
                               <div className="text-xs text-gray-500">
                                 {formatTime(slot.endTime)}
                               </div>
+                              {!slot.isAvailable && (
+                                <div className="text-xs text-red-600 mt-1 font-semibold">
+                                  UNAVAILABLE
+                                </div>
+                              )}
                             </button>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8 text-gray-500">
                           <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                          <p className="mb-2">No available slots for this date</p>
+                          <p className="mb-2">No time slots for this date</p>
                           <p className="text-sm text-gray-400">
                             The doctor may not have set their availability for this day.
                           </p>
